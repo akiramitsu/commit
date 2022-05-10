@@ -1,0 +1,53 @@
+name: Tukang Commit
+
+on:
+  push:
+    branches:
+      - master
+      
+  schedule:
+    - cron: "1 * * * *"
+
+jobs:
+  auto-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure safe.directory  # Workaround for actions/checkout#760
+        run: git config --global --add safe.directory /home/runner/work/commit/commit
+        timeout-minutes: 1
+
+      - name: git-workaround
+        run: |
+          export REPOSITORY_NAME=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')
+          git config --global --add safe.directory /__w/${REPOSITORY_NAME}/${REPOSITORY_NAME}
+          git config --global --add safe.directory *
+
+      - name: Safe dir
+        run: git config --global --add safe.directory /github/workspace
+
+      - name: work around permission issue
+        run: git config --global --add safe.directory /__w/commit/commit
+
+      - name: Trust My Directory
+        run: export GIT_CEILING_DIRECTORIES=/__w
+      
+      - uses: actions/checkout@v3      
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          
+      - name: Run Bot Task
+        run: |
+          chmod +x ./task.sh
+          ./task.sh
+
+      - name: Configure safe.directory  # Workaround for actions/checkout#760
+        run: git config --global --add safe.directory /home/runner/work/commit/commit
+        timeout-minutes: 1     
+          
+      - name: GitHub Push
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          force: true
+          directory: "."
+          github_token: ${{ secrets.GITHUB_TOKEN }}
